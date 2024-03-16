@@ -47,5 +47,5 @@ for(i in 1:nrow(case)) {
 
 # Save the updated 'case' data frame to a CSV file.
 #write.table( case , file=file.path(output_dir, "cased_sequenced.csv") , quote=FALSE , sep=";" , col.names=TRUE , row.names=FALSE )
-case_path <- "~/BHK lab/Ravi_Testing/files/cased_sequenced.csv"
+case_path <- "~/BHK lab/ICB_IMmotion150//files/cased_sequenced.csv"
 write.table( case , case_path , quote=FALSE , sep=";" , col.names=TRUE , row.names=FALSE )
