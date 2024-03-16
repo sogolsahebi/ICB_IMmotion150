@@ -1,5 +1,5 @@
 # File: Format_cased_sequnced.R
-# Goal: Save cased_sequenced.csv (dimensions:  389 x 4).
+# Goal: Save cased_sequenced.csv (dimensions:  589x  4 ).
 
 # Parse command line arguments for input, output, and annotation directory paths.
 #args <- commandArgs(trailingOnly = TRUE)
