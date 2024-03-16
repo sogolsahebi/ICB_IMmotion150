@@ -18,7 +18,7 @@ clin <- clin %>%
   separate_rows(sample_attributes, sep = ";") %>%
   separate(sample_attributes, into = c("Key", "Value"), sep = "=") %>%
   spread(Key, Value)
-colnames(clin)[colnames(clin) == "clin$sample_alias"] <- "patient"
+colnames(clin)[colnames(clin) == "sample_alias"] <- "patient"
 
 # Save formatted clinical data as CLIN.txt
 clin_output_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
