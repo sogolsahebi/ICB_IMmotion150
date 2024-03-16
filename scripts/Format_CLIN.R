@@ -1,7 +1,7 @@
 # Clinical Data Processing
 # Goal: save CLIN.csv (dimensions: 589 x 49).
 
-# Libraries and Source Files
+# Libraries and Source Files.
 # Access necessary functions from ICB_common codes.
 source("https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Common/main/code/Get_Response.R")
 source("https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Common/main/code/format_clin_data.R")
