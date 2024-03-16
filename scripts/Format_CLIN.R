@@ -1,5 +1,5 @@
 # Clinical Data Processing
-# Goal: save CLIN.csv (dimensions: 589 x 36).
+# Goal: save CLIN.csv (dimensions: 589 x 49).
 
 # Libraries and Source Files
 # Access necessary functions from ICB_common codes.
@@ -20,23 +20,23 @@ library(tibble)
 # Define the path to the source data
 file_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
 # Read CLIN.txt file
-clin <- read.csv(file_path, stringsAsFactors=FALSE, sep="\t", dec=',')
+clin_orginal <- read.csv(file_path, stringsAsFactors=FALSE, sep="\t", dec=',')
 
 # Set RNA-related columns based on 'RNA_All' values
-clin$rna <- ifelse(is.na(clin$AnnoRNASampleID), NA, "rnaseq")
-clin$rna_info <- ifelse(is.na(clin$AnnoRNASampleID), NA, "tpm")
+clin_orginal$rna <- ifelse(is.na(clin_orginal$AnnoRNASampleID), NA, "rnaseq")
+clin_orginal$rna_info <- ifelse(is.na(clin_orginal$AnnoRNASampleID), NA, "tpm")
 
 # Set DNA-related columns based on 'DNA_All' values
-clin$dna <- ifelse(is.na(clin$AnnoNormalWESID), NA, "wes")
+clin_orginal$dna <- ifelse(is.na(clin_orginal$AnnoNormalWESID), NA, "wes")
 
 # TODO: what should be in dna_info?
-clin$dna_info <- ifelse(is.na(clin$AnnoNormalWESID), NA, "--")
+clin_orginal$dna_info <- ifelse(is.na(clin_orginal$AnnoNormalWESID), NA, "--")
 
 # Select the required columns for further analysis
 selected_cols <- c("patient", "Stage", "ARM", "BestResponse", "PFS", "rna", "rna_info", "dna", "dna_info")
 
 # Combine selected columns with additional columns
-clin <- cbind(clin[, selected_cols], "Renal Cell Carcinoma", NA, NA, 
+clin <- cbind(clin_orginal[, selected_cols], "Renal Cell Carcinoma", NA, NA, 
               NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
 
 # Reorder columns.
@@ -58,8 +58,7 @@ clin <- clin[, c(
 )]
 
 # Use the format_clin_data function for further formatting.
-clin <- format_clin_data(clin, "patient", selected_cols, clin)
-
+clin <- format_clin_data(clin_orginal, "patient", selected_cols, clin)
 
 # Read 'curation_tissue.csv' file
 # annotation_tissue <- read.csv(file.path(annot_dir, 'curation_tissue.csv'))
