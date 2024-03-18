@@ -1,7 +1,7 @@
 # Format_EXPR.R.
 
 # RNA-seq Data Processing.
-# - save "Format_EXPR.R "(dimensions 57523 x 152).
+# - save "Format_EXPR.R "(dimensions 61544   325).
 
 library(data.table)
 
