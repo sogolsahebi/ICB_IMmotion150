@@ -29,7 +29,7 @@ clin_orginal$rna_info <- ifelse(is.na(clin_orginal$AnnoRNASampleID), NA, "tpm")
 # Set DNA-related columns based on 'DNA_All' values
 clin_orginal$dna <- ifelse(is.na(clin_orginal$AnnoNormalWESID), NA, "wes")
 
-# TODO: what should be in dna_info?
+# TODO: dna_info
 clin_orginal$dna_info <- ifelse(is.na(clin_orginal$AnnoNormalWESID), NA, "--")
 
 # Select the required columns for further analysis
@@ -65,13 +65,10 @@ clin <- format_clin_data(clin_orginal, "patient", selected_cols, clin)
 path <- "https://raw.githubusercontent.com/BHKLAB-DataProcessing/ICB_Common/main/data/curation_tissue.csv"
 annotation_tissue <- read.csv(path)
 
-# TODO: double check curation_tissue.csv row: Mmotion150, Renal Cell Carcinoma, Kidney
-
 # Annotate 'clin' using the 'annotation_tissue' data; Set tissueid column (survival_unit and survival_type columns are added in this step).
 clin <- annotate_tissue(clin=clin, study='IMmotion150', annotation_tissue=annotation_tissue, check_histo=FALSE) 
 
-
-# TODO: Double check with Sisira drug_types.
+# set drug types
 # "Atezo+Bev" "Sunitinib" "Atezo" --> Atezolizumab + Bevacizumab   Sunitinib Atezolizumab
 
 # Set treatmentid after tissueid column, based on curation_drug.csv file
@@ -79,13 +76,10 @@ annotation_drug <- read.csv("https://raw.githubusercontent.com/BHKLAB-DataProces
 clin <- add_column(clin, treatmentid=annotate_drug('IMmotion150', clin$drug_type, annotation_drug), .after='tissueid')
 
 
-# TODO: double check Farnoosh: Sunitinib ---> targeted, Atezolizumab + Bevacizumab ---> "IO+combo", Atezolizumab ---> "PD-1/PD-L1"
-# Sunitinib is a targeted therapy.
+# Sunitinib ---> targeted, Atezolizumab + Bevacizumab ---> "IO+targeted", Atezolizumab ---> "PD-1/PD-L1"
 # Atezolizumab + Bevacizumab is a combination of immunotherapy and targeted therapy.
-# Atezolizumab is an immunotherapy.
 # Six categories of:  PD-1/PD-L1, CLA4 , IO+combo, IO+chemo, Chemo+targeted, targeted
 # TODO: update that is 7 subset --> IO+targeted
-
 
 # Set drug_type based on treatmentid
 clin$drug_type[clin$treatmentid == "Sunitinib"] <- 'targeted'
