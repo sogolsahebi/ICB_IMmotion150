@@ -67,7 +67,7 @@ clin <- add_column(clin, treatmentid=annotate_drug('IMmotion150', clin$drug_type
 # Sunitinib ---> targeted, Atezolizumab + Bevacizumab ---> "IO+targeted", Atezolizumab ---> "PD-1/PD-L1"
 # Atezolizumab + Bevacizumab is a combination of immunotherapy and targeted therapy.
 # Six categories of:  PD-1/PD-L1, CLA4 , IO+combo, IO+chemo, Chemo+targeted, targeted
-# TODO: update that is 7 subset --> IO+targeted
+# TODO: update that is 7 subset --> IO+targeted.
 
 # Set drug_type based on treatmentid
 clin$drug_type[clin$treatmentid == "Sunitinib"] <- 'targeted'

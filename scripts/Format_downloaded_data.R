@@ -6,7 +6,7 @@
     # - EXPR_gene_tpm.tsv: dimension 46312 x 325
     # - EXPR_gene_counts.tsv: dimension 46312   325
     # - EXPR_tx_tpm.tsv: dimension 246624 x 325
-    # - EXPR_tx_counts.tsv: dimension 246624    325
+    # - EXPR_tx_counts.tsv: dimension 246624 x 325
 
 library(tidyr)
 library(dplyr)
