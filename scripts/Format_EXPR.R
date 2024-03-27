@@ -5,10 +5,6 @@
 
 library(data.table)
 
-# Parse command line arguments for input, output, and annotation directory paths.
-#args <- commandArgs(trailingOnly = TRUE)
-#input_dir <- args[1]
-#output_dir <- args[2]
 
 # Data Reading
 # Read EXPR.txt.gz file.

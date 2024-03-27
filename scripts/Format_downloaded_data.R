@@ -2,12 +2,17 @@
 
 # This script formats and cleans clinical and expression data.
 # - Creates "CLIN.txt" dimension 589 x 32
-# - Creates "EXPR.txt.gz" dimension 61544 x 326
+# - Creates 'expr_list.rds' including :
+    # - EXPR_gene_tpm.tsv: dimension 46312 x 325
+    # - EXPR_gene_counts.tsv: dimension 46312   325
+    # - EXPR_tx_tpm.tsv: dimension 246624 x 325
+    # - EXPR_tx_counts.tsv: dimension 246624    325
 
 library(tidyr)
 library(dplyr)
 library(readr)
 library(data.table)
+library(tximport)
 
 # Read the CSV file for clinical data
 clin_path <- "~/BHK lab/ICB_IMmotion150/files/run_sample.csv"
@@ -18,45 +23,52 @@ clin <- clin %>%
   separate_rows(sample_attributes, sep = ";") %>%
   separate(sample_attributes, into = c("Key", "Value"), sep = "=") %>%
   spread(Key, Value)
-colnames(clin)[colnames(clin) == "sample_alias"] <- "patient"
+colnames(clin)[colnames(clin) == "sample_accession_id"] <- "patient"
 
 # Save formatted clinical data as CLIN.txt
 clin_output_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
 write.table(clin, clin_output_path, quote = FALSE, sep = "\t", row.names = FALSE)
 
 # Read and format expression data
-expr_path <- "~/BHK lab/ICB_IMmotion150/files/modified_transcript_tpms_all_samples.tsv"
-expr <- as.data.frame(fread(expr_path))
+# output: expr_list.rds
+load("~/BHK lab/Annotation/Gencode.v19.annotation.RData")
+work_dir <- "~/BHK lab/ICB_IMmotion150/files/kallisto_v0.46.1_GRCh38.40/"
 
-# Extract gene_ids
-expr$gene_id <- sapply(strsplit(as.character(expr$target_id), "\\|"), `[`, 2)
+dir.create(file.path(work_dir, 'rnaseq'))
 
-# Aggregating expression data to gene-level, focusing on numeric columns
-# - Group by 'gene_id' to handle each gene as a unique entity
-# - Summarise across all numeric columns to aggregate transcript-level data into gene-level
-# - 'where(is.numeric)': Ensures only numeric columns (e.g., expression values) are considered for summing
-# - 'na.rm = TRUE': Ignores NA values, preventing them from affecting the summation
-# - Ungroup to remove the grouping structure, returning a regular data frame
-expr_aggregated <- expr %>%
-  group_by(gene_id) %>%
-  summarise(across(where(is.numeric), sum, na.rm = TRUE)) %>%
-  ungroup()
+# Creates EXPR_gene_tpm.tsv, EXPR_gene_counts.tsv, EXPR_tx_tpm.tsv, EXPR_tx_counts.tsv 
+process_kallisto_output <- function(work_dir, tx2gene){
+  
+  samples <- list.dirs(file.path(work_dir, 'rnaseq'), full.names=FALSE, recursive = FALSE)
+  files <- file.path(work_dir, 'rnaseq', samples, "abundance.h5")
+  names(files) <- samples
+  
+  expr_tx <- tximport(files, type = "kallisto", txOut = TRUE, ignoreAfterBar = TRUE)
+  expr_gene <- tximport(files, type = "kallisto", tx2gene = tx2gene, ignoreAfterBar = TRUE)
+  
+  expr_list <- list()
+  expr_list[['expr_gene_tpm']] <- log2(expr_gene$abundance + 0.001)
+  expr_list[['expr_gene_counts']] <- log2(expr_gene$counts + 1)
+  expr_list[['expr_isoform_tpm']] <- log2(expr_tx$abundance + 0.001)
+  expr_list[['expr_isoform_counts']] <- log2(expr_tx$counts + 1)
+  
+  saveRDS(expr_list, file.path(work_dir, 'expr_list.rds'))
+  
+  unlink(file.path(work_dir, 'rnaseq'), recursive = TRUE)
+}
 
-# Convert tibble to a traditional data frame
-expr_aggregated <- as.data.frame(expr_aggregated)
+unlink(file.path(work_dir, 'rnaseq', '__MACOSX'), recursive = TRUE)
+process_kallisto_output(work_dir, tx2gene)
 
-rownames(expr_aggregated) <- expr_aggregated$gene_id
-expr_aggregated$gene_id <- NULL
-expr_aggregated$target_id <- NULL
+# SNV.txt.gz
+snv <- read_excel(file.path(work_dir, '1-s2.0-S0092867417311224-mmc3.xlsx'), sheet='Table S3')
+colnames(snv) <- snv[3, ]
+snv <- snv[-c(1:3), ]
+numcols <- c('Start', 'End', 'Tcov', 'Tac', 'Taf')
+snv[, numcols] <- sapply(snv[, numcols], as.numeric)
+gz <- gzfile(file.path(work_dir, 'SNV.txt.gz'), "w")
+write.table( snv , file=gz , quote=FALSE , sep=";" , col.names=TRUE, row.names = FALSE )
+close(gz)
 
-# Sort the row names of 'expr'
-expr_aggregated <- expr_aggregated[sort(rownames(expr_aggregated)), ] #dim 61544 x 326
 
-# Confirm all column values are numeric (output not shown)
-all(sapply(expr_aggregated, is.numeric)) == TRUE
 
-# Save formatted expression data as EXPR.txt.gz
-expr_output_path <- "~/BHK lab/ICB_IMmotion150/files/EXPR.txt.gz"
-gz_conn <- gzfile(expr_output_path, "w")
-write.table(expr_aggregated, gz_conn, sep = "\t", row.names = TRUE, quote = FALSE)
-close(gz_conn)
