@@ -13,6 +13,7 @@ library(dplyr)
 library(readr)
 library(data.table)
 library(tximport)
+library(data.table)
 
 # Read the CSV file for clinical data
 clin_path <- "~/BHK lab/ICB_IMmotion150/files/run_sample.csv"
@@ -31,7 +32,7 @@ write.table(clin, clin_output_path, quote = FALSE, sep = "\t", row.names = FALSE
 
 # Read and format expression data
 # output: expr_list.rds
-load("~/BHK lab/Annotation/Gencode.v19.annotation.RData")
+load("~/BHK lab/Annotation/Gencode.v40.annotation.RData")
 work_dir <- "~/BHK lab/ICB_IMmotion150/files/kallisto_v0.46.1_GRCh38.40/"
 
 dir.create(file.path(work_dir, 'rnaseq'))
@@ -56,19 +57,62 @@ process_kallisto_output <- function(work_dir, tx2gene){
   
   unlink(file.path(work_dir, 'rnaseq'), recursive = TRUE)
 }
-
-unlink(file.path(work_dir, 'rnaseq', '__MACOSX'), recursive = TRUE)
 process_kallisto_output(work_dir, tx2gene)
 
+
 # SNV.txt.gz
-snv <- read_excel(file.path(work_dir, '1-s2.0-S0092867417311224-mmc3.xlsx'), sheet='Table S3')
-colnames(snv) <- snv[3, ]
-snv <- snv[-c(1:3), ]
-numcols <- c('Start', 'End', 'Tcov', 'Tac', 'Taf')
-snv[, numcols] <- sapply(snv[, numcols], as.numeric)
-gz <- gzfile(file.path(work_dir, 'SNV.txt.gz'), "w")
-write.table( snv , file=gz , quote=FALSE , sep=";" , col.names=TRUE, row.names = FALSE )
-close(gz)
+
+snv_path <- "~/BHK lab/ICB_IMmotion150/files/COMBINED_snv.tsv.gz"
+snv <- fread(snv_path, sep = "\t") # dimension 193692932 x 9
+
+# # Define the exact mapping for some effects
+# effect_mapping <- c(
+#   "disruptive_inframe_deletion" = "In_Frame_Del",
+#   "conservative_inframe_insertion" = "In_Frame_Ins",
+#   "start_lost" = "Start_Codon_Ins",
+#   "frameshift_variant" = "Frame_Shift_Del", # Assume deletions unless specified as insertion
+#   "frameshift_variant&stop_gained" = "Frame_Shift_Ins", # Specific case where it's clearly an insertion
+#   "missense_variant" = "Missense_Mutation",
+#   "stop_gained" = "Nonsense_Mutation",
+#   "stop_lost" = "Nonstop_Mutation",
+#   "splice_region_variant" = "Splice_Site",
+#   "splice_donor_variant&splice_region_variant&intron_variant" = "Splice_Site",
+#   "stop_lost&splice_region_variant" = "Stop_Codon_Del",
+#   "start_lost&conservative_inframe_deletion&splice_region_variant" = "De_novo_Start_OutOfFrame",
+#   "start_lost&splice_region_variant" = "Start_Codon_SNP"
+# )
+# 
+# # Function to map the effects with a default behavior for unspecified frameshift variants
+# map_effects <- function(effect) {
+#   if (!is.na(effect_mapping[effect])) {
+#     return(effect_mapping[effect])
+#   } else if (grepl("frameshift_variant", effect)) {
+#     # Additional check for frameshift variants to decide if it is a deletion or not specified
+#     if (grepl("insertion", effect, ignore.case = TRUE)) {
+#       return("Frame_Shift_Ins")
+#     } else {
+#       return("Frame_Shift_Del")  # Default to Frame_Shift_Del if not specified as insertion
+#     }
+#   }
+#   return(effect)  # Return the effect unchanged if it does not match any specific mapping
+# }
+# 
+# # Apply the mapping function to each effect in the dataframe
+# snv$Effect <- sapply(snv$Effect, map_effects)
+# 
+# 
+# # c( "Sample" , "Gene" , "Chr" , "Pos" , "Ref" , "Alt" , "Effect" , "MutType" )
+# 
+# # Print updated effects
+# unique(snv$Effect)
+# 
+# subset_snv <- snv[ snv$Effect %in% c("In_Frame_Del" , "In_Frame_Ins" , "Start_Codon_Ins" , "Frame_Shift_Del" ,
+#                                           "Frame_Shift_Ins" , "Missense_Mutation" , "Nonsense_Mutation" , "Nonstop_Mutation" ,
+# #                                           "Splice_Site" , "Stop_Codon_Del" , "De_novo_Start_OutOfFrame" , "Start_Codon_SNP") ,]
+# gz <- gzfile(file.path(work_dir, 'SNV.txt.gz'), "w")
+# write.table( snv , file=gz , quote=FALSE , sep=";" , col.names=TRUE, row.names = FALSE )
+# close(gz)
+
 
 
 

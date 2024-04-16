@@ -16,25 +16,41 @@ file_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
 # Read CLIN.txt file
 clin_orginal <- read.csv(file_path, stringsAsFactors=FALSE, sep="\t", dec=',')
 
-# Set RNA-related columns based on 'AnnoRNASampleID' values
-clin_orginal$rna <- ifelse(is.na(clin_orginal$AnnoRNASampleID), NA, "rnaseq")
-clin_orginal$rna_info <- ifelse(is.na(clin_orginal$AnnoRNASampleID), NA, "tpm")
+# Reading expr_list.rds
+expr_list <- readRDS("~/BHK lab/ICB_IMmotion150/files/kallisto_v0.46.1_GRCh38.40/expr_list.rds")
+expr <- expr_list[['expr_gene_tpm']]
+rna_patient <- intersect(colnames(expr), clin_orginal$patient)
 
-# Set DNA-related columns based on 'AnnoNormalWESID' values
-clin_orginal$dna <- ifelse(is.na(clin_orginal$AnnoNormalWESID), NA, "wes")
-clin_orginal$dna_info <- ifelse(is.na(clin_orginal$AnnoNormalWESID), NA, "snv")
+# Initialize the 'rna' and 'rna_info' columns with NA
+clin_orginal$rna <- NA
+clin_orginal$rna_info <- NA
+
+# Set 'rna' to "rnaseq" and 'rna_info' to "tpm" only for patients in the 'patient' vector
+clin_orginal$rna[clin_orginal$patient %in% rna_patient] <- "rnaseq"
+clin_orginal$rna_info[clin_orginal$patient %in% rna_patient] <- "tpm"
+
+# Reading snv and find sample names for taht.
+snv_path <- "~/BHK lab/ICB_IMmotion150/files/COMBINED_snv.tsv.gz"
+snv <- fread(snv_path, sep = "\t") # dimension 193692932 x 9
+dna_patients <- sort(snv$Sample)
+
+# Set DNA-related columns 
+clin_orginal$dna <- NA
+clin_orginal$dna_info <- NA
+clin_orginal$dna[clin_orginal$patient %in% dna_patients] <- "wes"
+clin_orginal$dna_info[clin_orginal$patient %in% dna_patients] <- "snv"
 
 # Select the required columns for further analysis
 selected_cols <- c("patient", "Stage", "ARM", "BestResponse", "PFS", "rna", "rna_info", "dna", "dna_info")
 
 # Combine selected columns with additional columns
-clin <- cbind(clin_orginal[, selected_cols], "Renal Cell Carcinoma", NA, NA, 
+clin <- cbind(clin_orginal[, selected_cols], "Kidney", NA, NA, 
               NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
 
 # Reorder columns.
-colnames(clin) <- c("patient", "stage", "drug_type", "recist", "pfs", "rna", "rna_info", 
+colnames(clin) <- c("patient", "stage", "drug_type", "recist", "t.pfs", "rna", "rna_info", 
                     "dna", "dna_info", "primary", "sex", "age", "histo", "response.other.info", "response", 
-                    "t.pfs", "t.os", "os")
+                    "pfs", "t.os", "os")
 
 # Modify stage values, remove "STAGE II" to "II" example.
 clin$stage <- gsub("STAGE ", "", clin$stage)
@@ -48,6 +64,9 @@ clin <- clin[, c(
   "response.other.info", "recist", "response", "drug_type", "dna", "dna_info", "rna", "rna_info", "t.pfs", 
   "pfs", "t.os", "os"
 )]
+
+# Set the pfs 0 an d1 based on t.pfs
+clin_orginal$pfs <- ifelse(is.na(clin$t.pfs), 0, 1)
 
 # Use the format_clin_data function for further formatting.
 clin <- format_clin_data(clin_orginal, "patient", selected_cols, clin)
@@ -66,8 +85,7 @@ clin <- add_column(clin, treatmentid=annotate_drug('IMmotion150', clin$drug_type
 
 # Sunitinib ---> targeted, Atezolizumab + Bevacizumab ---> "IO+targeted", Atezolizumab ---> "PD-1/PD-L1"
 # Atezolizumab + Bevacizumab is a combination of immunotherapy and targeted therapy.
-# Six categories of:  PD-1/PD-L1, CLA4 , IO+combo, IO+chemo, Chemo+targeted, targeted
-# TODO: update that is 7 subset --> IO+targeted.
+# Six categories of:  PD-1/PD-L1, CLA4 , IO+combo, IO+chemo, Chemo+targeted, targeted ,IO+targeted.
 
 # Set drug_type based on treatmentid
 clin$drug_type[clin$treatmentid == "Sunitinib"] <- 'targeted'
@@ -78,5 +96,5 @@ clin$drug_type[clin$treatmentid == "Atezolizumab"] <- 'PD-1/PD-L1'
 clin[clin == ""] <- NA
 
 # Save the processed data as CLIN.csv file
-file_path <- "~/BHK lab/Ravi_Testing/files/CLIN.csv"
+file_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.csv"
 write.table(clin, file=file_path, quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
