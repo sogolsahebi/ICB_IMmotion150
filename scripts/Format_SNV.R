@@ -10,13 +10,8 @@ snv_path <- "~/BHK lab/ICB_IMmotion150/files/COMBINED_snv.tsv.gz"
 snv <- fread(snv_path, sep = "\t") # dimension 193692932 x 9
 
 #Column names are already correct:("Sample", "Gene", "Chr", "Pos", "Ref", "Alt", "Effect", "MutType")]
-
-# We are interested in keeping these Effects only according to line 201: https://github.com/BHKLAB-DataProcessing/ICB_Common/blob/main/code/Create_SummarizedExp.R
-# Example output of unique(snv$Effect) is omitted for brevity
-
-# Assuming 'snv' is already read as a data.table
-# Make a copy of snv
 snv_data <- copy(snv)
+
 # Define categories for recoding 'Effect' values
 splice_site_effects <- c("disruptive_inframe_deletion", "splice_acceptor_variant&intron_variant",
                          "splice_donor_variant&intron_variant", "splice_region_variant",
@@ -41,10 +36,12 @@ snv_data[Effect == "stop_lost", Effect := "Stop_Codon_Del"]
 snv_data[Effect %in% "start_lost&conservative_inframe_deletion&splice_region_variant", Effect := "De_novo_Start_OutOfFrame"]
 snv_data[Effect %in% "start_lost&splice_region_variant", Effect := "Start_Codon_SNP"]
 
+# Remove ',<NON_REF>' from the 'Alt' column
+snv = snv[, Alt := gsub(",<NON_REF>", "", Alt)]
+
 # Write the modified SNV data to a file
 path <- "~/BHK lab/ICB_IMmotion150/files/SNV.csv"
 write.table(snv_data, path, quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
-
 
 # OPTIONAL RECOMMENDED: since the file is huge subseting the snv data to required effects values 
 # We are interested in keeping these Effects only according to line 201: https://github.com/BHKLAB-DataProcessing/ICB_Common/blob/main/code/Create_SummarizedExp.R
@@ -58,13 +55,3 @@ snv_data <- snv_data[Effect %in% desired_effects] # now 7978686 x 9
 
 path <- "~/BHK lab/ICB_IMmotion150/files/Subset_SNV.csv"
 write.table(snv_data, path, quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
-
-
-
-
-
-
-
-
-
-

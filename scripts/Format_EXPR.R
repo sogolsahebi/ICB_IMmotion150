@@ -27,34 +27,3 @@ for(assay_name in names(expr_list)){
     row.names=TRUE 
   )
 }
-
-
-# 
-# clin <- read.table(file.path(output_dir, 'CLIN.csv'), sep=';', header=TRUE)
-# sample_map <- clin[!is.na(clin$SRA.Run.ID..tumor.RNA), c('patient', 'SRA.Run.ID..tumor.RNA')]
-# 
-# for(assay_name in names(expr_list)){
-#   expr <- data.frame(expr_list[[assay_name]])
-#   expr <- expr[, colnames(expr) %in% sample_map$SRA.Run.ID..tumor.RNA]
-#   colnames(expr) <- unlist(lapply(colnames(expr), function(col){
-#     return(sample_map$patient[sample_map$SRA.Run.ID..tumor.RNA == col])
-#   }))
-#   write.table( 
-#     expr , 
-#     file= file.path(output_dir, paste0('EXPR_', str_replace(assay_name, 'expr_', ''), '.csv')) , 
-#     quote=FALSE , 
-#     sep=";" , 
-#     col.names=TRUE , 
-#     row.names=TRUE 
-#   )
-# }
-
-# 
-# for(assay_name in names(expr_list)){
-#   df <- data.frame(expr_list[[assay_name]])
-#   df <- df[, patient]
-#   write.table(df, file=file.path(output_dir, paste0('EXPR_', str_replace(assay_name, 'expr_', ''), '.csv')), sep=';', col.names=TRUE, row.names=TRUE)
-# }
-
-# using:
-# get_MultiAssayExp(study = "Riaz", input_dir = paste0("{prefix}", "processed"), expr_with_counts_isoforms=TRUE),

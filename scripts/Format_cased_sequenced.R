@@ -2,10 +2,10 @@
 # Goal: Save cased_sequenced.csv (dimensions:  589x  4 ).
 
 # Load the clinical merged data from the specified file path.
-clin_path <- "~/BHK lab/ICB_IMmotion150//files/CLIN.txt"
+clin_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
 clin <- read.csv(clin_path, sep="\t", header=TRUE)
 
-# sort the 'patient' column from clin and store it as Pateint.
+# sort the 'patient' column from clin and store it as Patient.
 patient <- sort(clin$patient)
 
 # Initialize a data frame for 'case' with the unique patients and default values
