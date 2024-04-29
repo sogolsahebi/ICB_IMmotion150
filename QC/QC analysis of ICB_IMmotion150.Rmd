@@ -1,0 +1,294 @@
+---
+title: "QC Analysis of ICB_IMmotion150"
+author: "Nasim Bondar Sahebi"
+date: "2024-04-11"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## load libraries
+
+```{r libraries}
+library(ggplot2)
+library(dplyr)
+library(MultiAssayExperiment) 
+library(pheatmap)
+library(DT)
+library(tibble)
+library(MultiAssayExperiment)
+library(edgeR)
+library(limma)
+library(RColorBrewer)
+```
+
+
+## Data Loading and Preparation
+
+**Data Overview**:
+
+  - **Study Reference**: [PubMed ID PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/)
+  - **Patient Count **: 326 ( 325 samples have Rna-se ad 326 samples have WES)
+  - ** Multi-omices type**: Rna-seq and WES
+  - **Treatment Details **:
+  - **PD-1/PD-L1**: 110 patients
+  - **IO+targeted**: 108 patients
+  - **targeted**: 108 patients
+
+Load multiassay .rds file, extract clinical, expression and annotations data; prepare gene expression data for analysis.
+
+```{r load-data}
+# Load your multiassay result and extract clinical data, expression data, and annotation
+
+# Load mae obj
+mae <- readRDS("~/BHK lab/ICB_IMmotion150/output data/ICB_IMmotion150.rds")
+
+# Extract Clinical data
+clin <- data.frame(colData(mae))
+
+# Mae has five assays: "expr_gene_tpm", "expr_gene_counts", "expr_isoform_tpm", "expr_isoform_counts" and "snv"
+
+# Extract the 'expr_gene_tpm': TPM expression values for genes, normalized for length and sequencing depth.
+expr <- assays(mae)[["expr_gene_tpm"]]  # dimension 61544 x 325
+snv <- assays(mae)[["snv"]] # dimension 33039 x 326
+
+# Extracting the annotation
+annot_expr <- data.frame(rowData(mae@ExperimentList$expr_gene_tpm))
+annot_snv <- data.frame(rowData(mae@ExperimentList$snv))
+
+# Display first few rows of the dataset
+DT::datatable(expr[1:8, 1:4])
+DT::datatable(snv[1:8, 1:4])
+
+```
+
+### Expression Preparation
+
+This step involves subsetting our expression dataframe to include only protein-coding genes and the Genes of Interest, as defined in the paper [PubMed ID PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/). We set the gene names as row names for clarity. The gene signatures are specified as follows:
+- **Angio23**: `VEGFA`, `KDR`, `ESM1`, `PECAM1`, `ANGPTL4`, `CD34`
+- **Teff24**: `CD8A`, `EOMES`, `PRF1`, `IFNG`, `CD274`
+- **Myeloid Inflammation29–33**: `IL-6`, `CXCL1`, `CXCL2`, `CXCL3`, `CXCL8`, `PTGS2`
+
+This prepares our dataset for the subsequent gene expression analysis.
+
+
+
+```{r expr with gene of interest( proteincoding genes)}
+
+## 1. First:for our expression dat awith log(TPM + 0.001)
+
+# Step 1: Filter to include only protein-coding genes
+annot_proteincoding <- annot_expr[annot_expr$gene_type == "protein_coding",]
+
+# Define genes of interests
+genes_of_interest <- c(
+  "VEGFA", "KDR", "ESM1", "PECAM1", "ANGPTL4", "CD34",  # Angio23 genes
+  "CD8A", "EOMES", "PRF1", "IFNG", "CD274",             # Teff24 genes
+  "IL6", "CXCL1", "CXCL2", "CXCL3", "CXCL8", "PTGS2"    # Myeloid inflammation genes
+)
+
+# Step 2: Subset the protein-coding dataframe to include only the genes of interest
+annot_proteincoding_subset <- annot_proteincoding[annot_proteincoding$gene_name %in% genes_of_interest,] #19988 protein coding genes
+
+# Step 3: Filter the expr dataframe to include only rows corresponding to the genes of interest
+expr <- expr[rownames(expr) %in% rownames(annot_proteincoding_subset),] # dimension 17 x 325
+
+#set gene_id column for merging purpose 
+expr$gene_id <- rownames(expr)
+
+# Step 4: Merge to add gene names and remove gene_id column
+expr <- merge(expr, annot_proteincoding_subset[, c("gene_name", "gene_id")], by = "gene_id", all.x = TRUE)
+expr$gene_id <- NULL  
+
+# Step 5: Set gene names as row names for the expr dataframe
+rownames(expr) <- expr$gene_name
+expr$gene_name <- NULL
+
+# Display expr
+DT::datatable(expr)
+
+## 2. Second:sam eprocess for our count matrix
+expr_counts <- assays(mae)[["expr_gene_counts"]] # dim 61544 x 325
+
+expr_counts <- expr_counts[rownames(expr_counts) %in% rownames(annot_proteincoding_subset),] # dimension 17 x 325
+expr_counts$gene_id <- rownames(expr_counts)
+
+# Merge to add gene names and remove gene_id column
+expr_counts <- merge(expr_counts, annot_proteincoding_subset[, c("gene_name", "gene_id")], by = "gene_id", all.x = TRUE)
+expr_counts$gene_id <- NULL
+rownames(expr_counts) <- expr_counts$gene_name
+expr_counts$gene_name <- NULL
+
+# Display our counts matrix
+DT::datatable(expr_counts)
+
+```
+
+### Fig. Gene Expression Analyses
+
+Graphing a heatmap showing the expression of genes of interest (rows) as defined in the paper [PubMed ID PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/):
+
+- **Angio23**: VEGFA, KDR, ESM1, PECAM1, ANGPTL4, and CD34.
+- **Teff24**: CD8A, EOMES, PRF1, IFNG, and CD274.
+- **Myeloid Inflammation29–33**: IL-6, CXCL1, CXCL2, CXCL3, CXCL8, and PTGS2.
+
+Sample annotations include:
+- **PD-L1 IHC status** for tumor-infiltrating ICs.
+- **Sarcomatoid Features**: Whether they are present or not.
+- **MSKCC Score**: Classifying samples as Favorable, Intermediate, or Poor.
+- **Tumor Stage**: Stage I-IV.
+- **Tumor Mutation Burden (TMB)**: Number of mutations.
+- **VHL and PBRM1**: Mutation status of these genes.
+
+**Aim**: Comparing this heatmap with Fig 2a from the referenced paper.
+
+**Comparison**:
+1. **Normalization**: The referenced paper uses edgeR for normalization, which might differ from the current normalization approach.
+2. **Filtering**: The referenced paper filters out genes with low coverage, which may necessitate filtering based on counts per million (CPM).
+3. **Log2 Transformation**: The referenced paper applies this transformation using limma's `voom()` function. We may convert TPM data to CPM or counts before applying `voom()`.
+4. **Signature Score Calculation**: The referenced paper computes average expression scores for each signature, dividing samples into high and low groups based on the median score.
+5. **Grouping and Sorting**: The referenced paper groups samples into high and low categories for each signature, then sorts them by combinations of these categories. The current heatmap might show different groupings or orderings.
+
+**Conclusion**: The heatmap presents a detailed view of gene expression signatures, with clinical annotations and biological groupings, showing both similarities and differences compared to Fig 2a.
+
+
+```{r Gene-expression analysis, fig.width= 8 , fig.height= 5}
+
+# HEATMAP1
+# Since in Their paper they start with counts 
+
+# Step 1: Create a DGEList object from the raw counts
+dge <- DGEList(counts = expr_counts)
+
+# Step 2: Calculate normalization factors to scale the raw library sizes
+dge <- calcNormFactors(dge)
+
+# Step 3: Filter out genes with low coverage
+keep <- rowSums(cpm(dge) >= 0.25) >= (0.1 * ncol(dge))
+dge <- dge[keep, ]
+
+# Step 4: Apply the voom transformation
+v <- voom(dge, plot = FALSE)
+
+# Step 5: Define gene signatures
+angiogenesis_genes <- c("VEGFA", "KDR", "ESM1", "PECAM1", "ANGPTL4", "CD34")
+teff_genes <- c("CD8A", "EOMES", "PRF1", "IFNG", "CD274")
+myeloid_inflammation_genes <- c("IL6", "CXCL1", "CXCL2", "CXCL3", "CXCL8", "PTGS2")
+
+# Step 6: Calculate the signature scores
+signature_scores <- sapply(list(angiogenesis=angiogenesis_genes, 
+                                teff=teff_genes, 
+                                myeloid_inflammation=myeloid_inflammation_genes), 
+                           function(genes) {
+                             rowMeans(v$E[genes, , drop=FALSE], na.rm=TRUE)
+                           })
+
+
+# calculate the signiture score 
+signature_scores_list <- list()
+for (signature_name in names(gene_signatures)) {
+  scores <- calculate_signature_scores(gene_signatures[[signature_name]], v$E)
+  signature_scores_list[[signature_name]] <- scores
+}
+
+signature_scores_matrix <- do.call(cbind, signature_scores_list)
+signature_scores_df <- as.data.frame(t(signature_scores_matrix))
+
+
+# Classify scores to "High" and "Low"
+classified_scores <- apply(signature_scores_df, 2, function(x) {
+  factor(ifelse(x >= median(x, na.rm = TRUE), "High", "Low"))
+})
+
+# Combine with clinical data
+
+# Define 'clin_data' that matches the samples in 'expr_counts'
+intersecting_ids <- intersect(clin$patientid, colnames(expr_counts))
+clin_data <- clin[clin$patientid %in% intersecting_ids, ]
+clin_data <- clin_data[match(rownames(signature_scores_df), clin_data$SampleID),]
+
+# Merge the clinical and signature score data
+combined_data <- cbind(clin_data, classified_scores)
+
+# Step 8: Create the heatmap
+
+my_palette <- "RdYlBu"  
+
+rownames(clin_data) <- NULL
+
+# Ensure unique row names
+rownames(patient_annotation) <- make.unique(rownames(patient_annotation))
+
+# Subset to include only samples present in expr_counts
+patient_annotation <- patient_annotation[colnames(expr_counts), ]
+
+# Normalize expression data
+normalized_expr <- scale(expr_counts)
+
+# Create a heatmap
+pheatmap(normalized_expr,
+         cluster_rows = TRUE,
+         cluster_cols = TRUE,
+         color = colorRampPalette(brewer.pal(9, my_palette))(100),
+         main = "Heatmap of Gene Expression (Normalized)",
+         fontsize = 8, 
+         annotation_col = patient_annotation,
+         xlab = "", 
+         angle_col = 0, 
+         border_color = NA)
+
+```
+
+
+### Heatmap with Gene Expression using `log2(TPM+0.001)` Normalization
+
+This heatmap displays gene expression data across various samples using a `log2(TPM+0.001)` normalization:
+
+Comparing the present heatmap to Figure 2.a from the study [PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/):
+1. **Normalization**: The study utilizes edgeR to normalize counts, transforming them to counts per million (CPM) before performing a z-score transformation. The current heatmap is immediately normalized to 'log2(TPM+0.001)'.
+2. **Grouping and Sorting**: The paper's heatmap divides data into groups based on median signature scores for Angio, Teff, and Myeloid Inflammation, then sorts by these combinations. The present heatmap does not explicitly display this grouping and sorting.
+3. **Clinical Annotations**: Both heatmaps contain clinical annotations, however the specific features and their relationship to gene expression may differ somewhat. The report adds additional annotations, such as PD-L1 IHC status and tumour mutation load.
+4. **Expression Levels**: Both heatmaps use z-scores to show relative gene expression levels, allowing for a consistent comparison of expression patterns between samples.
+5. **Visualization**: The present heatmap provides a simple view of gene expression signatures and clinical annotations, however the grouping and annotation details change somewhat from the relevant research.
+
+In conclusion, both heatmaps give full insights into gene expression and clinical correlations, but they differ in normalization, grouping, and particular annotations, resulting in minor changes in patterns and context.
+
+
+```{r heat map log-tpm , fig.width= 8 , fig.height= 5}
+
+
+# second heatmap based on our processed data "expr", which represents gene expression data normalized to log2(TPM+0.001)
+
+# Define gene signatures
+angiogenesis_genes <- c("VEGFA", "KDR", "ESM1", "PECAM1", "ANGPTL4", "CD34")
+teff_genes <- c("CD8A", "EOMES", "PRF1", "IFNG", "CD274")
+myeloid_inflammation_genes <- c("IL6", "CXCL1", "CXCL2", "CXCL3", "CXCL8", "PTGS2")
+
+# Calculate z-scores for the expression data
+expr_z_scores <- t(scale(t(expr[, sapply(expr, is.numeric)])))
+
+# Reset row names of clinical data
+rownames(clin) <- NULL
+
+# Prepare patient annotations
+patient_annotation <- clin %>%
+  select(patientid, SarcomatoidFeatures, MSKCC, stage, VHL, PBRM1) %>%
+  mutate(across(everything(), as.character)) %>%
+  column_to_rownames(var = "patientid")
+
+patient_annotation <- patient_annotation[colnames(expr_z_scores), ]
+
+# Generate the heatmap with annotations
+pheatmap(expr_z_scores, 
+         cluster_rows = FALSE, 
+         cluster_cols = FALSE, 
+         show_rownames = TRUE,
+         show_colnames = FALSE,
+         annotation_col = patient_annotation) 
+
+
+```
+
