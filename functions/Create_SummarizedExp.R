@@ -270,29 +270,31 @@ Create_SNV_SummarizedExperiment = function( case, clin, snv, feat_snv , feat_cna
   
   sample = patient
   
-  for(i in 1:length(sample)){
-    s = snv[ snv$Sample %in% sample[i], ]
-    if( nrow(s) ){
-      for(j in 1:nrow(s)){
-        if( !is.na( s$Gene[j]) & nchar(s$Gene[j]) > 0){
-          if( !is.na( mat_snv[ s$Gene[j] , sample[i] ] ) ){
-            mat_snv[ s$Gene[j] , sample[i] ]  = paste( mat_snv[ s$Gene[j] , sample[i] ] , paste( s$Ref[j] , s$Alt[j] , sep=">" ) , sep=";" )
-          } else{
-            mat_snv[ s$Gene[j] , sample[i] ]  = paste( s$Ref[j] , s$Alt[j] , sep=">" )
-          }
-        }
-      }
-    }
-  }
+  # for(i in 1:length(sample)){
+  #   s = snv[ snv$Sample %in% sample[i], ]
+  #   if( nrow(s) ){
+  #     for(j in 1:nrow(s)){
+  #       if( !is.na( s$Gene[j]) & nchar(s$Gene[j]) > 0){
+  #         if( !is.na( mat_snv[ s$Gene[j] , sample[i] ] ) ){
+  #           mat_snv[ s$Gene[j] , sample[i] ]  = paste( mat_snv[ s$Gene[j] , sample[i] ] , paste( s$Ref[j] , s$Alt[j] , sep=">" ) , sep=";" )
+  #         } else{
+  #           mat_snv[ s$Gene[j] , sample[i] ]  = paste( s$Ref[j] , s$Alt[j] , sep=">" )
+  #         }
+  #       }
+  #     }
+  #   }
+  # }
   
   
-  # #TODO: these lines are faster instead of for loop(above)
-  # # Create a new column in snv combining Ref and Alt into a mutation format
-  # snv[, Mutation := paste(Ref, Alt, sep = ">")]
-  # aggregated_snv <- snv[, .(Mutations = paste(Mutation, collapse = ";")), by = .(Gene, Sample)]
-  # wide_snv <- dcast(aggregated_snv, Gene ~ Sample, value.var = "Mutations", fill = NA)
-  # mat_snv <- as.matrix(wide_snv[, -1, with = FALSE])  # Exclude the first column (Gene) 
-  # rownames(mat_snv) <- wide_snv$Gene
+  #TODO: these lines are faster instead of for loop(above)
+  # Create a new column in snv combining Ref and Alt into a mutation format
+  library(data.table)
+  setDT(snv)
+  snv[, Mutation := paste(Ref, Alt, sep = ">")]
+  aggregated_snv <- snv[, .(Mutations = paste(Mutation, collapse = ";")), by = .(Gene, Sample)]
+  wide_snv <- dcast(aggregated_snv, Gene ~ Sample, value.var = "Mutations", fill = NA)
+  mat_snv <- as.matrix(wide_snv[, -1, with = FALSE])  # Exclude the first column (Gene)
+  rownames(mat_snv) <- wide_snv$Gene
   
   
   rownames(clin) = clin$patient
@@ -348,7 +350,10 @@ Create_SummarizedExperiments = function( input_dir, study , expr_bool , snv_bool
   }
   
   if( snv_bool ){
-    feat_snv <- Get_SNV_feature( case=case_file, file=snv_file, coverage=coverage , indel_bool=indel_bool , mutsig_bool=mutsig_bool )
+    # TODO: Added this for IMmotion150 (for repetition in SNV_function)
+    snv <- read.csv( snv_file , sep=";" , stringsAsFactors=FALSE )
+    feat_snv <- Get_SNV_feature( case=case_file, file=snv, coverage=coverage , indel_bool=indel_bool , mutsig_bool=mutsig_bool ) #snv was snv_file before
+    
     rownames(feat_snv) <- str_replace_all(rownames(feat_snv), '[-\\.]', '_')
   }
   
@@ -393,8 +398,6 @@ Create_SummarizedExperiments = function( input_dir, study , expr_bool , snv_bool
       
       expr = read.csv( expr_file , sep=";" , stringsAsFactors=FALSE )
       colnames(expr) <- str_replace_all(colnames(expr), '[-\\.]', '_')
-      #TODO(added for ICB_Wolf)
-      colnames(expr) <- sub("^X", "", colnames(expr))
       se_list[["expr"]] <- Create_EXP_SummarizedExperiment(
         study=study, 
         case=case, 

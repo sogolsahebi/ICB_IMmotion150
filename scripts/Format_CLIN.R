@@ -17,7 +17,7 @@ file_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
 clin_orginal <- read.csv(file_path, stringsAsFactors=FALSE, sep="\t", dec=',')
 
 # Reading expr_list.rds
-expr_list <- readRDS("~/BHK lab/ICB_IMmotion150/files/kallisto_v0.46.1_GRCh38.40/expr_list.rds")
+expr_list <- readRDS("~/BHK lab//files/kallisto_v0.46.1_GRCh38.40/expr_list.rds")
 expr <- expr_list[['expr_gene_tpm']]
 rna_patient <- intersect(colnames(expr), clin_orginal$patient)
 

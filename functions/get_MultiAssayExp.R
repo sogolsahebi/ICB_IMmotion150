@@ -6,7 +6,6 @@ library(stringr)
 library(dplyr)
 library(readr)
 
-
 #source_location <- "https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Common/main"
 # source_location <- "~/Documents/GitHub/Pachyderm/PredictIO_ICB/ICB_Common"
 
@@ -19,14 +18,15 @@ get_MultiAssayExp <- function(study, input_dir, expr_with_counts_isoforms=FALSE)
   #add
   #study = "Wolf"
   #input_dir = "~/BHK lab/ICB_Wolf/files/"
-
-
+  
   #add
-  data <- read_delim("~/BHK lab/ICB_IMmotion150/output data/DATASET_LOAD_INFO.csv", delim = ";",quote = ";", escape_double = FALSE, trim_ws = TRUE)
+  data <- read_delim("files/DATASET_LOAD_INFO.csv", delim = ";",quote = ";", escape_double = FALSE, trim_ws = TRUE)
   colnames(data) <- gsub("\"", "", names(data))
   data <- data %>% mutate(across(everything(), ~str_replace_all(.x, "\"", "")))
   data <- data[data$study == study, ]
   print(data$study)
+
+
   
   se_list <- Create_SummarizedExperiments( 
     input_dir=input_dir,
@@ -67,9 +67,9 @@ get_MultiAssayExp <- function(study, input_dir, expr_with_counts_isoforms=FALSE)
     }
   }
   coldata <- coldata[order(rownames(coldata)), ]
-
    
-   #saveRDS(I, file = "C:/Users/sogol/OneDrive/Documents/BHK lab/ICB_IMmotion150/output data/ICB_IMmotion150.rds", compress = "xz", compression_level = 9)
+  #saveRDS(IM, file = "output data/ICB_IMmotion150.rds", compress = "xz", compression_level = 9)
+  #saveRDS(IM, file = "~/BHK lab/ICB/ICB_IMmotion150/output data/ICB_IMmotion150.rds")
    
   return(MultiAssayExperiment(experiments=se_list, colData=coldata))
 }

@@ -10,8 +10,8 @@ library(data.table)
 library(stringr)
 
 # Define the input and output to dir
-input_dir <- "~/BHK lab/ICB_IMmotion150/files/kallisto_v0.46.1_GRCh38.40/"
-output_dir <- "~/BHK lab/ICB_IMmotion150/files/"
+input_dir <- "files/kallisto_v0.46.1_GRCh38.40/"
+output_dir <- "files/"
 
 # extract expr_list including 4 expr tsv files
 expr_list <- readRDS(file.path(input_dir, 'expr_list.rds'))

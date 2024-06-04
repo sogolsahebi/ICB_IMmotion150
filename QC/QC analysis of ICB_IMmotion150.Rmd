@@ -23,6 +23,8 @@ library(MultiAssayExperiment)
 library(edgeR)
 library(limma)
 library(RColorBrewer)
+library(ComplexHeatmap)
+library(circlize)
 ```
 
 
@@ -44,7 +46,7 @@ Load multiassay .rds file, extract clinical, expression and annotations data; pr
 # Load your multiassay result and extract clinical data, expression data, and annotation
 
 # Load mae obj
-mae <- readRDS("~/BHK lab/ICB_IMmotion150/output data/ICB_IMmotion150.rds")
+mae <- readRDS("~/BHK lab/ICB/ICB_IMmotion150/output data/ICB_IMmotion150.rds")
 
 # Extract Clinical data
 clin <- data.frame(colData(mae))
@@ -73,8 +75,6 @@ This step involves subsetting our expression dataframe to include only protein-c
 - **Myeloid Inflammation29–33**: `IL-6`, `CXCL1`, `CXCL2`, `CXCL3`, `CXCL8`, `PTGS2`
 
 This prepares our dataset for the subsequent gene expression analysis.
-
-
 
 ```{r expr with gene of interest( proteincoding genes)}
 
@@ -155,90 +155,72 @@ Sample annotations include:
 **Conclusion**: The heatmap presents a detailed view of gene expression signatures, with clinical annotations and biological groupings, showing both similarities and differences compared to Fig 2a.
 
 
-```{r Gene-expression analysis, fig.width= 8 , fig.height= 5}
+```{r Gene-expression analysis2, fig.width= 8 , fig.height= 5}
 
-# HEATMAP1
-# Since in Their paper they start with counts 
-
-# Step 1: Create a DGEList object from the raw counts
-dge <- DGEList(counts = expr_counts)
-
-# Step 2: Calculate normalization factors to scale the raw library sizes
-dge <- calcNormFactors(dge)
-
-# Step 3: Filter out genes with low coverage
-keep <- rowSums(cpm(dge) >= 0.25) >= (0.1 * ncol(dge))
-dge <- dge[keep, ]
-
-# Step 4: Apply the voom transformation
-v <- voom(dge, plot = FALSE)
-
-# Step 5: Define gene signatures
-angiogenesis_genes <- c("VEGFA", "KDR", "ESM1", "PECAM1", "ANGPTL4", "CD34")
+# Define the genes for each category
+angio_genes <- c("VEGFA", "KDR", "ESM1", "PECAM1", "ANGPTL4", "CD34")
 teff_genes <- c("CD8A", "EOMES", "PRF1", "IFNG", "CD274")
-myeloid_inflammation_genes <- c("IL6", "CXCL1", "CXCL2", "CXCL3", "CXCL8", "PTGS2")
+myeloid_genes <- c("IL6", "CXCL1", "CXCL2", "CXCL3", "CXCL8", "PTGS2")
 
-# Step 6: Calculate the signature scores
-signature_scores <- sapply(list(angiogenesis=angiogenesis_genes, 
-                                teff=teff_genes, 
-                                myeloid_inflammation=myeloid_inflammation_genes), 
-                           function(genes) {
-                             rowMeans(v$E[genes, , drop=FALSE], na.rm=TRUE)
-                           })
+# Combine all genes into a single list
+all_genes <- c(angio_genes, teff_genes, myeloid_genes)
 
+# Prepare expression data
+expression_data <- as.data.frame(t(expr_counts[rownames(expr_counts) %in% all_genes, ]))
+expression_data$patientid <- rownames(expression_data) 
+rownames(expression_data) <- NULL 
+#colnames(expression_data) <- rownames(v$E)
 
-# calculate the signiture score 
-signature_scores_list <- list()
-for (signature_name in names(gene_signatures)) {
-  scores <- calculate_signature_scores(gene_signatures[[signature_name]], v$E)
-  signature_scores_list[[signature_name]] <- scores
-}
-
-signature_scores_matrix <- do.call(cbind, signature_scores_list)
-signature_scores_df <- as.data.frame(t(signature_scores_matrix))
-
-
-# Classify scores to "High" and "Low"
-classified_scores <- apply(signature_scores_df, 2, function(x) {
-  factor(ifelse(x >= median(x, na.rm = TRUE), "High", "Low"))
-})
-
-# Combine with clinical data
-
-# Define 'clin_data' that matches the samples in 'expr_counts'
+# Check for matching patient IDs
 intersecting_ids <- intersect(clin$patientid, colnames(expr_counts))
 clin_data <- clin[clin$patientid %in% intersecting_ids, ]
-clin_data <- clin_data[match(rownames(signature_scores_df), clin_data$SampleID),]
+clin_data$patientid <- as.character(clin_data$patientid)
 
-# Merge the clinical and signature score data
-combined_data <- cbind(clin_data, classified_scores)
+expression_data <- expression_data[, c("patientid", setdiff(colnames(expression_data), "patientid"))]
 
-# Step 8: Create the heatmap
+# Merge clinical data with expression data
+data_merged <- merge(clin_data, expression_data, by = "patientid", all.x = TRUE)
 
-my_palette <- "RdYlBu"  
+# Prepare top annotations
+top_annotation <- data.frame(
+  PatientID = data_merged$patientid,
+  PD_L1_IC_IHC_score = factor(data_merged$ICSCORE, levels = c("0", "1", "2", "3")),
+  Sarcomatoid = factor(ifelse(data_merged$SarcomatoidFeatures == "Y", "Y", "N"), levels = c("N", "Y")),
+  MSKCC = factor(data_merged$MSKCC, levels = c("Poor", "Intermediate", "Favorable")),
+  Stage = factor(data_merged$stage, levels = c("I", "II", "III", "IV"))
+)
 
-rownames(clin_data) <- NULL
+top_annotation <- na.omit(top_annotation)
+patient_ids_in_top <- unique(top_annotation$PatientID)
 
-# Ensure unique row names
-rownames(patient_annotation) <- make.unique(rownames(patient_annotation))
+filtered_expression_data <- expression_data[expression_data$patientid %in% patient_ids_in_top, ]
 
-# Subset to include only samples present in expr_counts
-patient_annotation <- patient_annotation[colnames(expr_counts), ]
+top_annotation$PatientID <- NULL
 
-# Normalize expression data
-normalized_expr <- scale(expr_counts)
+ha_top <- HeatmapAnnotation(df = top_annotation, col = list(
+  PD_L1_IC_IHC_score = c("0" = "white", "1" = "lightgray", "2" = "gray", "3" = "black"),
+  Sarcomatoid = c("N" = "orange", "Y" = "yellow"),
+  MSKCC = c("Poor" = "red", "Intermediate" = "blue", "Favorable" = "green"),
+  Stage = c("I" = "darkred", "II" = "red", "III" = "lightcoral", "IV" = "pink")
+))
 
-# Create a heatmap
-pheatmap(normalized_expr,
-         cluster_rows = TRUE,
-         cluster_cols = TRUE,
-         color = colorRampPalette(brewer.pal(9, my_palette))(100),
-         main = "Heatmap of Gene Expression (Normalized)",
-         fontsize = 8, 
-         annotation_col = patient_annotation,
-         xlab = "", 
-         angle_col = 0, 
-         border_color = NA)
+# Subset the filtered expression data to include only the genes of interest
+filtered_expression_data <- filtered_expression_data[, c("patientid", all_genes)]
+filtered_expression_data <- filtered_expression_data[-1]
+filtered_expression_data  <- as.data.frame(scale(filtered_expression_data))
+
+
+ normalized_expr <- as.data.frame(lapply(filtered_expression_data, function(x) (x - min(x)) / (max(x) - min(x)) * 4 - 2))
+
+# Define expression colors
+expression_colors <- colorRamp2(c(-2, 0, 2), c("#FFD700", "white", "#6A0DAD"))
+
+# Plot the Heatmap with annotations
+Heatmap(t(normalized_expr ), name = "Expression", col = expression_colors, 
+        top_annotation = ha_top, show_row_names = TRUE, show_column_names = FALSE, 
+        cluster_rows = TRUE, cluster_columns = TRUE)
+
+
 
 ```
 
@@ -259,7 +241,6 @@ In conclusion, both heatmaps give full insights into gene expression and clinica
 
 ```{r heat map log-tpm , fig.width= 8 , fig.height= 5}
 
-
 # second heatmap based on our processed data "expr", which represents gene expression data normalized to log2(TPM+0.001)
 
 # Define gene signatures
@@ -275,7 +256,7 @@ rownames(clin) <- NULL
 
 # Prepare patient annotations
 patient_annotation <- clin %>%
-  select(patientid, SarcomatoidFeatures, MSKCC, stage, VHL, PBRM1) %>%
+  dplyr::select(patientid, SarcomatoidFeatures, MSKCC, stage, VHL, PBRM1) %>%
   mutate(across(everything(), as.character)) %>%
   column_to_rownames(var = "patientid")
 
@@ -287,8 +268,7 @@ pheatmap(expr_z_scores,
          cluster_cols = FALSE, 
          show_rownames = TRUE,
          show_colnames = FALSE,
-         annotation_col = patient_annotation) 
-
+         annotation_col = patient_annotation)
 
 ```
 

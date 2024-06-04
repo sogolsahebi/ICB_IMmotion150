@@ -1,9 +1,8 @@
 # File: Format_cased_sequnced.R
 # Goal: Save cased_sequenced.csv (dimensions:  589x  4 ).
 
-# Load the clinical merged data from the specified file path.
-clin_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
-clin <- read.csv(clin_path, sep="\t", header=TRUE)
+# Load the clinical merged data 
+clin <- read.csv("files/CLIN.txt", sep="\t", header=TRUE)
 
 # sort the 'patient' column from clin and store it as Patient.
 patient <- sort(clin$patient)
@@ -20,13 +19,12 @@ case$expr <- as.numeric(as.character(case$expr))
 
 # Load the RNA data
 # Read the RNA-Seq data from the gct file.
-expr_list <- readRDS(file.path("~/BHK lab/ICB_IMmotion150/files/kallisto_v0.46.1_GRCh38.40/", 'expr_list.rds'))
+expr_list <- readRDS(file.path("files/kallisto_v0.46.1_GRCh38.40/", 'expr_list.rds'))
 expr <- expr_list[['expr_gene_tpm']]
 rna_patients <- sort(colnames(expr))
 
 # Load SNV data 
-snv_path <- "~/BHK lab/ICB_IMmotion150/files/COMBINED_snv.tsv.gz"
-snv <- fread(snv_path, sep = "\t") # dimension 193692932 x 9
+snv <- fread("files/COMBINED_snv.tsv.gz", sep = "\t") # dimension 193692932 x 9
 dna_patient <- unique(snv$Sample)
 
 # Check the overlap of patient IDs between the 'expr' and 'clin' data
@@ -45,5 +43,4 @@ for(i in 1:nrow(case)) {
   }
 }
 
-case_path <- "~/BHK lab/ICB_IMmotion150//files/cased_sequenced.csv"
-write.table( case , case_path , quote=FALSE , sep=";" , col.names=TRUE , row.names=FALSE )
+write.table( case , "files/cased_sequenced.csv" , quote=FALSE , sep=";" , col.names=TRUE , row.names=FALSE )

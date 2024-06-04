@@ -6,8 +6,7 @@
 library(data.table)
 
 # Set the path for the snv file and read the data using fread
-snv_path <- "~/BHK lab/ICB_IMmotion150/files/COMBINED_snv.tsv.gz"
-snv <- fread(snv_path, sep = "\t") # dimension 193692932 x 9
+snv <- fread("files/COMBINED_snv.tsv.gz", sep = "\t") # dimension 193692932 x 9
 
 #Column names are already correct:("Sample", "Gene", "Chr", "Pos", "Ref", "Alt", "Effect", "MutType")]
 snv_data <- copy(snv)
@@ -43,6 +42,7 @@ snv = snv[, Alt := gsub(",<NON_REF>", "", Alt)]
 path <- "~/BHK lab/ICB_IMmotion150/files/SNV.csv"
 write.table(snv_data, path, quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
 
+
 # OPTIONAL RECOMMENDED: since the file is huge subseting the snv data to required effects values 
 # We are interested in keeping these Effects only according to line 201: https://github.com/BHKLAB-DataProcessing/ICB_Common/blob/main/code/Create_SummarizedExp.R
 
@@ -53,5 +53,4 @@ desired_effects <- c("In_Frame_Del", "In_Frame_Ins", "Start_Codon_Ins", "Frame_S
 # Filter the dataset to keep only rows with desired effects
 snv_data <- snv_data[Effect %in% desired_effects] # now 7978686 x 9
 
-path <- "~/BHK lab/ICB_IMmotion150/files/Subset_SNV.csv"
-write.table(snv_data, path, quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
+write.table(snv_data, "files/Subset_SNV.csv", quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
