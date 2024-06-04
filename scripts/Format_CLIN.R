@@ -11,32 +11,19 @@ source("https://raw.githubusercontent.com/BHKLAB-Pachyderm/ICB_Common/main/code/
 # Read library tibble for add_column function
 library(tibble)
 
-# Define the path to the source data
-file_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.txt"
 # Read CLIN.txt file
-clin_orginal <- read.csv(file_path, stringsAsFactors=FALSE, sep="\t", dec=',')
+clin_orginal <- read.csv("files/CLIN.txt", stringsAsFactors=FALSE, sep="\t", dec=',')
 
-# Reading expr_list.rds
-expr_list <- readRDS("~/BHK lab//files/kallisto_v0.46.1_GRCh38.40/expr_list.rds")
-expr <- expr_list[['expr_gene_tpm']]
-rna_patient <- intersect(colnames(expr), clin_orginal$patient)
+# Open case to set rna and dna relate dcolumns
+case <- read.csv( "files/cased_sequenced.csv" , sep=";" , stringsAsFactors=FALSE )
+rna_patients <- case$patient[case$expr == 1]
+dna_patients <- case$patient[case$snv == 1]
 
-# Initialize the 'rna' and 'rna_info' columns with NA
-clin_orginal$rna <- NA
-clin_orginal$rna_info <- NA
+# Update clinical data for RNA sequencing patients
+clin_orginal$rna[clin_orginal$patient %in% rna_patients] <- "rnaseq"
+clin_orginal$rna_info[clin_orginal$patient %in% rna_patients] <- "tpm"
 
-# Set 'rna' to "rnaseq" and 'rna_info' to "tpm" only for patients in the 'patient' vector
-clin_orginal$rna[clin_orginal$patient %in% rna_patient] <- "rnaseq"
-clin_orginal$rna_info[clin_orginal$patient %in% rna_patient] <- "tpm"
-
-# Reading snv and find sample names for taht.
-snv_path <- "~/BHK lab/ICB_IMmotion150/files/COMBINED_snv.tsv.gz"
-snv <- fread(snv_path, sep = "\t") # dimension 193692932 x 9
-dna_patients <- sort(snv$Sample)
-
-# Set DNA-related columns 
-clin_orginal$dna <- NA
-clin_orginal$dna_info <- NA
+# Update clinical data for DNA sequencing patients
 clin_orginal$dna[clin_orginal$patient %in% dna_patients] <- "wes"
 clin_orginal$dna_info[clin_orginal$patient %in% dna_patients] <- "snv"
 
@@ -44,10 +31,9 @@ clin_orginal$dna_info[clin_orginal$patient %in% dna_patients] <- "snv"
 selected_cols <- c("patient", "Stage", "ARM", "BestResponse", "PFS", "rna", "rna_info", "dna", "dna_info")
 
 # Combine selected columns with additional columns
-clin <- cbind(clin_orginal[, selected_cols], "Kidney", NA, NA, 
-              NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
+clin <- cbind(clin_orginal[, selected_cols], "Kidney", NA, NA,  NA, NA, NA, NA, NA, NA, NA, NA, NA, NA)
 
-# Reorder columns.
+# Reorder columns
 colnames(clin) <- c("patient", "stage", "drug_type", "recist", "t.pfs", "rna", "rna_info", 
                     "dna", "dna_info", "primary", "sex", "age", "histo", "response.other.info", "response", 
                     "pfs", "t.os", "os")
@@ -65,8 +51,9 @@ clin <- clin[, c(
   "pfs", "t.os", "os"
 )]
 
-# Set the pfs 0 an d1 based on t.pfs
-clin_orginal$pfs <- ifelse(is.na(clin$t.pfs), 0, 1)
+# Set the pfs NA
+clin_orginal$pfs <- NA
+clin_orginal$t.pfs <- NA
 
 # Use the format_clin_data function for further formatting.
 clin <- format_clin_data(clin_orginal, "patient", selected_cols, clin)
@@ -96,5 +83,5 @@ clin$drug_type[clin$treatmentid == "Atezolizumab"] <- 'PD-1/PD-L1'
 clin[clin == ""] <- NA
 
 # Save the processed data as CLIN.csv file
-file_path <- "~/BHK lab/ICB_IMmotion150/files/CLIN.csv"
-write.table(clin, file=file_path, quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
+write.table(clin, file="files/CLIN.csv", quote=FALSE, sep=";", col.names=TRUE, row.names=FALSE)
+
