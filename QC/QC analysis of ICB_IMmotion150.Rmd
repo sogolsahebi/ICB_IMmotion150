@@ -207,13 +207,9 @@ ha_top <- HeatmapAnnotation(df = top_annotation, col = list(
 # Subset the filtered expression data to include only the genes of interest
 filtered_expression_data <- filtered_expression_data[, c("patientid", all_genes)]
 filtered_expression_data <- filtered_expression_data[-1]
-filtered_expression_data  <- as.data.frame(scale(filtered_expression_data))
+filtered_expression_data  <- as.data.frame((filtered_expression_data))
 
-
- normalized_expr <- as.data.frame(lapply(filtered_expression_data, function(x) (x - min(x)) / (max(x) - min(x)) * 4 - 2))
-
-# Define expression colors
-expression_colors <- colorRamp2(c(-2, 0, 2), c("#FFD700", "white", "#6A0DAD"))
+normalized_expr <- as.data.frame(scale(filtered_expression_data)) 
 
 # Plot the Heatmap with annotations
 Heatmap(t(normalized_expr ), name = "Expression", col = expression_colors, 
