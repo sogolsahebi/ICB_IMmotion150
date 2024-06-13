@@ -70,7 +70,7 @@ DT::datatable(expr_counts[1:8, 1:4])
 
 ### Expression Preparation
 
-This step involves subsetting our expression dataframe to include only protein-coding  as defined in the paper [PubMed ID PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/).
+This step involves subsetting our expression dataframe to include only protein-coding genes and the Genes of Interest, as defined in the paper [PubMed ID PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/). Genes of Interest are specified as follows:
 
 This prepares our dataset for the subsequent gene expression analysis.
 
@@ -117,6 +117,8 @@ DT::datatable(expr_counts)
 ### Gene Expression Analyses
 
 Graphing a heatmap showing the expression of genes of interest (rows) as defined in the paper [PubMed ID PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/):
+
+
 
 
 Sample annotations include:
@@ -246,14 +248,26 @@ pheatmap(as.matrix(t(normalized_expr)),
 
 This heatmap displays gene expression data across various samples using a `log2(TPM+0.001)` normalization:
 
+Comparing the present heatmap to Figure 2.a from the study [PMC6721896](https://pubmed.ncbi.nlm.nih.gov/29867230/):
+1. **Normalization**: The study utilizes edgeR to normalize counts, transforming them to counts per million (CPM) before performing a z-score transformation. The current heatmap is immediately normalized to 'log2(TPM+0.001)'.
+2. **Grouping and Sorting**: The paper's heatmap divides data into groups based on median signature scores for Angio, Teff, and Myeloid Inflammation, then sorts by these combinations. The present heatmap does not explicitly display this grouping and sorting.
+3. **Clinical Annotations**: Both heatmaps contain clinical annotations, however the specific features and their relationship to gene expression may differ somewhat. The report adds additional annotations, such as PD-L1 IHC status and tumour mutation load.
+4. **Expression Levels**: Both heatmaps use z-scores to show relative gene expression levels, allowing for a consistent comparison of expression patterns between samples.
+5. **Visualization**: The present heatmap provides a simple view of gene expression signatures and clinical annotations, however the grouping and annotation details change somewhat from the relevant research.
+
 In conclusion, both heatmaps give full insights into gene expression and clinical correlations, but they differ in normalization, grouping, and particular annotations, resulting in minor changes in patterns and context.
+
+
+
 
 ```{r heat map log-tpm , fig.width= 8 , fig.height= 5}
 
 # second heatmap based on our processed data "expr", which represents gene expression data normalized to log2(TPM+0.001)
 
-#subset to gene of interest
-expr <- expr[, genes_of_interest]
+# Define gene signatures
+angiogenesis_genes <- c("VEGFA", "KDR", "ESM1", "PECAM1", "ANGPTL4", "CD34")
+teff_genes <- c("CD8A", "EOMES", "PRF1", "IFNG", "CD274")
+myeloid_inflammation_genes <- c("IL6", "CXCL1", "CXCL2", "CXCL3", "CXCL8", "PTGS2")
 
 # Calculate z-scores for the expression data
 expr_z_scores <- t(scale(t(expr[, sapply(expr, is.numeric)])))
@@ -276,6 +290,9 @@ pheatmap(expr_z_scores,
          show_rownames = TRUE,
          show_colnames = FALSE,
          annotation_col = patient_annotation)
+
+
+
 
 
 ```
