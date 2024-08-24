@@ -4,7 +4,7 @@
 ## Data Availability
 
 **Anonymized Genetic Data:**
-- **Number of Patients:** 163
+- **Number of Patients:** 326
 - **Access:** Available at European Genome-Phenome Archive (EGA)
 - **Accession Number:** EGAS00001002928
 - **URL:** [EGA Dataset](https://www.ebi.ac.uk/ega/datasets/EGAS00001002928)
