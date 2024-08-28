@@ -1,5 +1,5 @@
 # ICB_IMmotion150
-- Read paper (PMID: [37024582](https://pubmed.ncbi.nlm.nih.gov/35623341/))
+- Read paper (PMID: [37024582](https://pubmed.ncbi.nlm.nih.gov/29867230/))
 
 ## Data Availability
 
