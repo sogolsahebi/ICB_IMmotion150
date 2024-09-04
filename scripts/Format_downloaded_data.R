@@ -3,10 +3,10 @@
 # This script formats and cleans clinical and expression data.
 # - Creates "CLIN.txt" dimension 589 x 32
 # - Creates 'expr_list.rds' including :
-    # - EXPR_gene_tpm.tsv: dimension 46312 x 325
-    # - EXPR_gene_counts.tsv: dimension 46312   325
-    # - EXPR_tx_tpm.tsv: dimension 246624 x 325
-    # - EXPR_tx_counts.tsv: dimension 246624 x 325
+    # - EXPR_gene_tpm.csv: dimension 46312 x 325
+    # - EXPR_gene_counts.csv: dimension 46312   325
+    # - EXPR_tx_tpm.csv: dimension 246624 x 325
+    # - EXPR_tx_counts.csv: dimension 246624 x 325
 
 library(tidyr)
 library(dplyr)
