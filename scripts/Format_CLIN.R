@@ -55,6 +55,8 @@ clin <- clin[, c(
 clin_orginal$pfs <- NA
 clin_orginal$t.pfs <- NA
 
+#TODO: set survival_unit as NA
+
 # Use the format_clin_data function for further formatting.
 clin <- format_clin_data(clin_orginal, "patient", selected_cols, clin)
 
