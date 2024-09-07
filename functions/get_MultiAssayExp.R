@@ -24,9 +24,6 @@ get_MultiAssayExp <- function(study, input_dir, expr_with_counts_isoforms=FALSE)
   colnames(data) <- gsub("\"", "", names(data))
   data <- data %>% mutate(across(everything(), ~str_replace_all(.x, "\"", "")))
   data <- data[data$study == study, ]
-  print(data$study)
-
-
   
   se_list <- Create_SummarizedExperiments( 
     input_dir=input_dir,
